@@ -1,9 +1,9 @@
 {
-  "name": "flyover-node-sdl2_ttf",
+  "name": "@flyover/node-sdl2_ttf",
   "version": "0.0.0",
   "author": "Flyover Games",
   "homepage": "http://flyovergames.com",
-  "description": "node sdl2_ttf module",
+  "description": "Node SDL2_ttf Package",
   "contributors": [
     "Isaac Burns <isaacburns@gmail.com>"
   ],
