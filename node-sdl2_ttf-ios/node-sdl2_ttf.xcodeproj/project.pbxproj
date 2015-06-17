@@ -1,0 +1,267 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		E2E04B504EF5DE147F7C3D75 /* node-sdl2_ttf.cc in Sources */ = {isa = PBXBuildFile; fileRef = CEC1E5D89A1CFB694AC989A1 /* node-sdl2_ttf.cc */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		2FC1E44293810F9AE01AC697 /* node-sdl2_ttf.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "node-sdl2_ttf.h"; sourceTree = "<group>"; };
+		66281797DA822034E7A9ACA1 /* node-sdl2_ttf.gyp */ = {isa = PBXFileReference; explicitFileType = sourcecode; path = "node-sdl2_ttf.gyp"; sourceTree = "<group>"; };
+		ADC845C821F1A9F11454CDA2 /* libnode-sdl2_ttf-ios.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libnode-sdl2_ttf-ios.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		CEC1E5D89A1CFB694AC989A1 /* node-sdl2_ttf.cc */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = "node-sdl2_ttf.cc"; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		02C703AD3F558FA82F90B3FC /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		2860C1584172143CDD8FE692 = {
+			isa = PBXGroup;
+			children = (
+				AA08DE0137C457BF8AC3D9B7 /* Source */,
+				E3455BD917D8ED0B84E65F40 /* Products */,
+				F4894EEC96F6E1B1EE555F3E /* Build */,
+			);
+			sourceTree = "<group>";
+		};
+		AA08DE0137C457BF8AC3D9B7 /* Source */ = {
+			isa = PBXGroup;
+			children = (
+				CEC1E5D89A1CFB694AC989A1 /* node-sdl2_ttf.cc */,
+				2FC1E44293810F9AE01AC697 /* node-sdl2_ttf.h */,
+			);
+			name = Source;
+			sourceTree = "<group>";
+		};
+		E3455BD917D8ED0B84E65F40 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				ADC845C821F1A9F11454CDA2 /* libnode-sdl2_ttf-ios.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		F4894EEC96F6E1B1EE555F3E /* Build */ = {
+			isa = PBXGroup;
+			children = (
+				66281797DA822034E7A9ACA1 /* node-sdl2_ttf.gyp */,
+			);
+			name = Build;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		178F40E780AFADA4830055C6 /* libnode-sdl2_ttf-ios */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C5550AD6588F02B097AB3AEB /* Build configuration list for PBXNativeTarget "libnode-sdl2_ttf-ios" */;
+			buildPhases = (
+				A41045111EB4F1EDA60697DA /* Sources */,
+				02C703AD3F558FA82F90B3FC /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "libnode-sdl2_ttf-ios";
+			productName = "node-sdl2_ttf-ios";
+			productReference = ADC845C821F1A9F11454CDA2 /* libnode-sdl2_ttf-ios.a */;
+			productType = "com.apple.product-type.library.static";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		86CC47C9416039F5241F4BDA /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+			};
+			buildConfigurationList = 1426B5DB9B4AA4B6CEF9908A /* Build configuration list for PBXProject "node-sdl2_ttf" */;
+			compatibilityVersion = "Xcode 3.2";
+			hasScannedForEncodings = 1;
+			mainGroup = 2860C1584172143CDD8FE692;
+			projectDirPath = ..;
+			projectRoot = "";
+			targets = (
+				178F40E780AFADA4830055C6 /* libnode-sdl2_ttf-ios */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A41045111EB4F1EDA60697DA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E2E04B504EF5DE147F7C3D75 /* node-sdl2_ttf.cc in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		58913BAD78C530B5DEC7A2F7 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD)";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INTERMEDIATE_DIR = "$(PROJECT_DERIVED_FILE_DIR)/$(CONFIGURATION)";
+				SDKROOT = iphoneos;
+				SHARED_INTERMEDIATE_DIR = "$(SYMROOT)/DerivedSources/$(CONFIGURATION)";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				USE_HEADERMAP = NO;
+			};
+			name = Release;
+		};
+		819B388D3443DBAD3125289B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					__POSIX__,
+					_LARGEFILE_SOURCE,
+					_LARGEFILE64_SOURCE,
+					"_FILE_OFFSET_BITS=64",
+					"_DARWIN_USE_64_BIT_INODE=1",
+					"NODE_WANT_INTERNALS=1",
+					"NDEBUG=1",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = (
+					.,
+					"../node-sdl2",
+					../nan,
+					../../node/src,
+					../../node/deps/uv/include,
+					../../node/deps/v8/include,
+					"../../node/deps/debugger-agent/include",
+					../../node/deps/cares/include,
+					../../SDL2/include,
+					../../SDL2_ttf,
+				);
+				"OTHER_CFLAGS[arch=arm64]" = "-marm";
+				"OTHER_CFLAGS[arch=armv7]" = "-marm";
+				"OTHER_CFLAGS[arch=armv7s]" = "-marm";
+				PREBINDING = NO;
+				PRODUCT_NAME = "node-sdl2_ttf-ios";
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-W",
+					"-Wno-unused-parameter",
+				);
+			};
+			name = Release;
+		};
+		97D83E61307E4258F4DA2623 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				EXECUTABLE_PREFIX = lib;
+				GCC_CW_ASM_SYNTAX = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_ENABLE_CPP_EXCEPTIONS = NO;
+				GCC_ENABLE_CPP_RTTI = NO;
+				GCC_ENABLE_PASCAL_STRINGS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					__POSIX__,
+					_LARGEFILE_SOURCE,
+					_LARGEFILE64_SOURCE,
+					"_FILE_OFFSET_BITS=64",
+					"_DARWIN_USE_64_BIT_INODE=1",
+					"NODE_WANT_INTERNALS=1",
+					_DEBUG,
+					"DEBUG=1",
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
+				GCC_THREADSAFE_STATICS = NO;
+				GCC_WARN_NON_VIRTUAL_DESTRUCTOR = YES;
+				HEADER_SEARCH_PATHS = (
+					.,
+					"../node-sdl2",
+					../nan,
+					../../node/src,
+					../../node/deps/uv/include,
+					../../node/deps/v8/include,
+					"../../node/deps/debugger-agent/include",
+					../../node/deps/cares/include,
+					../../SDL2/include,
+					../../SDL2_ttf,
+				);
+				"OTHER_CFLAGS[arch=arm64]" = "-marm";
+				"OTHER_CFLAGS[arch=armv7]" = "-marm";
+				"OTHER_CFLAGS[arch=armv7s]" = "-marm";
+				PREBINDING = NO;
+				PRODUCT_NAME = "node-sdl2_ttf-ios";
+				WARNING_CFLAGS = (
+					"-Wall",
+					"-Wendif-labels",
+					"-W",
+					"-Wno-unused-parameter",
+				);
+			};
+			name = Debug;
+		};
+		C7D0E463F66DE533288CA63A /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD)";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INTERMEDIATE_DIR = "$(PROJECT_DERIVED_FILE_DIR)/$(CONFIGURATION)";
+				SDKROOT = iphoneos;
+				SHARED_INTERMEDIATE_DIR = "$(SYMROOT)/DerivedSources/$(CONFIGURATION)";
+				TARGETED_DEVICE_FAMILY = "1,2";
+				USE_HEADERMAP = NO;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1426B5DB9B4AA4B6CEF9908A /* Build configuration list for PBXProject "node-sdl2_ttf" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C7D0E463F66DE533288CA63A /* Debug */,
+				58913BAD78C530B5DEC7A2F7 /* Release */,
+			);
+			defaultConfigurationIsVisible = 1;
+			defaultConfigurationName = Debug;
+		};
+		C5550AD6588F02B097AB3AEB /* Build configuration list for PBXNativeTarget "libnode-sdl2_ttf-ios" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				97D83E61307E4258F4DA2623 /* Debug */,
+				819B388D3443DBAD3125289B /* Release */,
+			);
+			defaultConfigurationIsVisible = 1;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 86CC47C9416039F5241F4BDA /* Project object */;
+}
