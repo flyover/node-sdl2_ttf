@@ -26,11 +26,6 @@
 
 #include "node-sdl2_ttf.h"
 
-#include <v8.h>
-#include <node.h>
-#include <SDL.h>
-#include <SDL_ttf.h>
-
 #include <stdlib.h> // malloc, free
 #include <string.h> // strdup
 
@@ -45,18 +40,16 @@
 
 #define countof(_a) (sizeof(_a)/sizeof((_a)[0]))
 
-using namespace v8;
-
 namespace node_sdl2_ttf {
 
-static SDL_Color _get_color(Handle<Value> value)
+static SDL_Color _get_color(v8::Local<v8::Value> value)
 {
 	SDL_Color color;
 	if (value->IsUint32())
 	{
 		// 0xAABBGGRR
-		*((::Uint32*)&color) = value->Uint32Value();
-		//::Uint32 num = value->Uint32Value();
+		*((::Uint32*)&color) = NANX_Uint32(value);
+		//::Uint32 num = NANX_Uint32(value);
 		//color.r = num >> 0;
 		//color.g = num >> 8;
 		//color.b = num >> 16;
@@ -65,16 +58,16 @@ static SDL_Color _get_color(Handle<Value> value)
 	else if (value->IsArray())
 	{
 		// [ 0xRR, 0xGG, 0xBB, 0xAA ]
-		Handle<Array> arr = Handle<Array>::Cast(value);
-		color.r = arr->Get(0)->Uint32Value();
-		color.g = arr->Get(1)->Uint32Value();
-		color.b = arr->Get(2)->Uint32Value();
-		color.a = arr->Get(3)->Uint32Value();
+		v8::Local<v8::Array> arr = v8::Local<v8::Array>::Cast(value);
+		color.r = NANX_Uint8(arr->Get(0));
+		color.g = NANX_Uint8(arr->Get(1));
+		color.b = NANX_Uint8(arr->Get(2));
+		color.a = NANX_Uint8(arr->Get(3));
 	}
 	else if (value->IsObject())
 	{
-		Handle<Object> obj = Handle<Object>::Cast(value);
-		node_sdl2::WrapColor* n_color = node::ObjectWrap::Unwrap<node_sdl2::WrapColor>(obj);
+		v8::Local<v8::Object> obj = v8::Local<v8::Object>::Cast(value);
+		node_sdl2::WrapColor* n_color = node_sdl2::WrapColor::Unwrap(obj);
 		if (n_color)
 		{
 			// new sdl.SDL_Color(0xRR, 0xGG, 0xBB, 0xAA);
@@ -83,10 +76,10 @@ static SDL_Color _get_color(Handle<Value> value)
 		else
 		{
 			// { r: 0xRR, g: 0xGG, b: 0xBB, a: 0xAA }
-			color.r = obj->Get(NanNew<String>("r"))->Uint32Value();
-			color.g = obj->Get(NanNew<String>("g"))->Uint32Value();
-			color.b = obj->Get(NanNew<String>("b"))->Uint32Value();
-			color.a = obj->Get(NanNew<String>("a"))->Uint32Value();
+			color.r = NANX_Uint8(obj->Get(NANX_SYMBOL("r")));
+			color.g = NANX_Uint8(obj->Get(NANX_SYMBOL("g")));
+			color.b = NANX_Uint8(obj->Get(NANX_SYMBOL("b")));
+			color.a = NANX_Uint8(obj->Get(NANX_SYMBOL("a")));
 		}
 	}
 	return color;
@@ -94,35 +87,35 @@ static SDL_Color _get_color(Handle<Value> value)
 
 // open font
 
-class Task_TTF_OpenFontIndex : public node_sdl2::SimpleTask
+class Task_TTF_OpenFontIndex : public Nanx::SimpleTask
 {
 public:
 	char* m_file;
 	int m_ptsize;
 	int m_index;
-	Persistent<Function> m_callback;
+	Nan::Persistent<v8::Function> m_callback;
 	TTF_Font* m_font;
 public:
-	Task_TTF_OpenFontIndex(Handle<String> file, Handle<Integer> ptsize, Handle<Function> callback) :
-		m_file(strdup(*String::Utf8Value(file))), 
-		m_ptsize(ptsize->Int32Value()),
+	Task_TTF_OpenFontIndex(v8::Local<v8::String> file, v8::Local<v8::Integer> ptsize, v8::Local<v8::Function> callback) :
+		m_file(strdup(*v8::String::Utf8Value(file))), 
+		m_ptsize(NANX_int(ptsize)),
 		m_index(0),
 		m_font(NULL)
 	{
-		NanAssignPersistent(m_callback, callback);
+		m_callback.Reset(callback);
 	}
-	Task_TTF_OpenFontIndex(Handle<String> file, Handle<Integer> ptsize, Handle<Integer> index, Handle<Function> callback) :
-		m_file(strdup(*String::Utf8Value(file))), 
-		m_ptsize(ptsize->Int32Value()),
-		m_index(index->Int32Value()),
+	Task_TTF_OpenFontIndex(v8::Local<v8::String> file, v8::Local<v8::Integer> ptsize, v8::Local<v8::Integer> index, v8::Local<v8::Function> callback) :
+		m_file(strdup(*v8::String::Utf8Value(file))), 
+		m_ptsize(NANX_int(ptsize)),
+		m_index(NANX_int(index)),
 		m_font(NULL)
 	{
-		NanAssignPersistent(m_callback, callback);
+		m_callback.Reset(callback);
 	}
 	~Task_TTF_OpenFontIndex()
 	{
 		free(m_file); m_file = NULL; // strdup
-		NanDisposePersistent(m_callback);
+		m_callback.Reset();
 		if (m_font) { TTF_CloseFont(m_font); m_font = NULL; }
 	}
 	void DoWork()
@@ -131,537 +124,480 @@ public:
 	}
 	void DoAfterWork(int status)
 	{
-		NanScope();
-		Handle<Value> argv[] = { WrapFont::Hold(m_font) };
-		NanMakeCallback(NanGetCurrentContext()->Global(), NanNew<Function>(m_callback), countof(argv), argv);
+		Nan::HandleScope scope;
+		v8::Local<v8::Value> argv[] = { WrapFont::Hold(m_font) };
+		Nan::MakeCallback(Nan::GetCurrentContext()->Global(), Nan::New<v8::Function>(m_callback), countof(argv), argv);
 		m_font = NULL; // script owns pointer
 	}
 };
 
-MODULE_EXPORT_IMPLEMENT_TODO(TTF_LinkedVersion)
+NANX_EXPORT(TTF_LinkedVersion) { Nan::ThrowError("TODO"); }
 
-MODULE_EXPORT_IMPLEMENT(TTF_ByteSwappedUNICODE)
+NANX_EXPORT(TTF_ByteSwappedUNICODE)
 {
-	NanScope();
-	int swapped = args[0]->Int32Value();
+	int swapped = NANX_int(info[0]);
 	TTF_ByteSwappedUNICODE(swapped);
-	NanReturnUndefined();
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_Init)
+NANX_EXPORT(TTF_Init)
 {
-	NanScope();
 	int err = TTF_Init();
 	if (err < 0)
 	{
 		printf("TTF_Init error: %d\n", err);
 	}
-	NanReturnValue(NanNew<Integer>(err));
+	info.GetReturnValue().Set(Nan::New(err));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_Quit)
+NANX_EXPORT(TTF_Quit)
 {
-	NanScope();
 	TTF_Quit();
-	NanReturnUndefined();
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_WasInit)
+NANX_EXPORT(TTF_WasInit)
 {
-	NanScope();
 	int init = TTF_WasInit();
-	NanReturnValue(NanNew<Integer>(init));
+	info.GetReturnValue().Set(Nan::New(init));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_GetError)
+NANX_EXPORT(TTF_GetError)
 {
-	NanScope();
 	const char* sdl_ttf_error = TTF_GetError();
-	NanReturnValue(NanNew<String>(sdl_ttf_error));
+	info.GetReturnValue().Set(NANX_STRING(sdl_ttf_error));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_ClearError)
+NANX_EXPORT(TTF_ClearError)
 {
-	NanScope();
 	SDL_ClearError();
-	NanReturnUndefined();
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_OpenFont)
+NANX_EXPORT(TTF_OpenFont)
 {
-	NanScope();
-	Local<String> file = Local<String>::Cast(args[0]);
-	Local<Integer> ptsize = Local<Integer>::Cast(args[1]);
-	Local<Function> callback = Local<Function>::Cast(args[2]);
-	int err = node_sdl2::SimpleTask::Run(new Task_TTF_OpenFontIndex(file, ptsize, callback));
-	NanReturnValue(NanNew<v8::Int32>(err));
+	v8::Local<v8::String> file = v8::Local<v8::String>::Cast(info[0]);
+	v8::Local<v8::Integer> ptsize = v8::Local<v8::Integer>::Cast(info[1]);
+	v8::Local<v8::Function> callback = v8::Local<v8::Function>::Cast(info[2]);
+	int err = Nanx::SimpleTask::Run(new Task_TTF_OpenFontIndex(file, ptsize, callback));
+	info.GetReturnValue().Set(Nan::New(err));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_OpenFontIndex)
+NANX_EXPORT(TTF_OpenFontIndex)
 {
-	NanScope();
-	Local<String> file = Local<String>::Cast(args[0]);
-	Local<Integer> ptsize = Local<Integer>::Cast(args[1]);
-	Local<Integer> index = Local<Integer>::Cast(args[2]);
-	Local<Function> callback = Local<Function>::Cast(args[3]);
-	int err = node_sdl2::SimpleTask::Run(new Task_TTF_OpenFontIndex(file, ptsize, index, callback));
-	NanReturnValue(NanNew<v8::Int32>(err));
+	v8::Local<v8::String> file = v8::Local<v8::String>::Cast(info[0]);
+	v8::Local<v8::Integer> ptsize = v8::Local<v8::Integer>::Cast(info[1]);
+	v8::Local<v8::Integer> index = v8::Local<v8::Integer>::Cast(info[2]);
+	v8::Local<v8::Function> callback = v8::Local<v8::Function>::Cast(info[3]);
+	int err = Nanx::SimpleTask::Run(new Task_TTF_OpenFontIndex(file, ptsize, index, callback));
+	info.GetReturnValue().Set(Nan::New(err));
 }
 
-MODULE_EXPORT_IMPLEMENT_TODO(TTF_OpenFontRW)
+NANX_EXPORT(TTF_OpenFontRW) { Nan::ThrowError("TODO"); }
 
-MODULE_EXPORT_IMPLEMENT_TODO(TTF_OpenFontIndexRW)
+NANX_EXPORT(TTF_OpenFontIndexRW) { Nan::ThrowError("TODO"); }
 
-MODULE_EXPORT_IMPLEMENT(TTF_CloseFont)
+NANX_EXPORT(TTF_CloseFont)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Drop(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
+	TTF_Font* font = WrapFont::Drop(info[0]); if (!font) { return Nan::ThrowError("null object"); }
 	TTF_CloseFont(font);
-	NanReturnUndefined();
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_GetFontStyle)
+NANX_EXPORT(TTF_GetFontStyle)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
 	int style = TTF_GetFontStyle(font);
-	NanReturnValue(NanNew<Integer>(style));
+	info.GetReturnValue().Set(Nan::New(style));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_SetFontStyle)
+NANX_EXPORT(TTF_SetFontStyle)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
-	int style = args[1]->Int32Value();
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
+	int style = NANX_int(info[1]);
 	TTF_SetFontStyle(font, style);
-	NanReturnValue(NanNew<Integer>(style));
+	info.GetReturnValue().Set(Nan::New(style));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_GetFontOutline)
+NANX_EXPORT(TTF_GetFontOutline)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
 	int outline = TTF_GetFontOutline(font);
-	NanReturnValue(NanNew<Integer>(outline));
+	info.GetReturnValue().Set(Nan::New(outline));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_SetFontOutline)
+NANX_EXPORT(TTF_SetFontOutline)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
-	int outline = args[1]->Int32Value();
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
+	int outline = NANX_int(info[1]);
 	TTF_SetFontOutline(font, outline);
-	NanReturnValue(NanNew<Integer>(outline));
+	info.GetReturnValue().Set(Nan::New(outline));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_GetFontHinting)
+NANX_EXPORT(TTF_GetFontHinting)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
 	int hinting = TTF_GetFontHinting(font);
-	NanReturnValue(NanNew<Integer>(hinting));
+	info.GetReturnValue().Set(Nan::New(hinting));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_SetFontHinting)
+NANX_EXPORT(TTF_SetFontHinting)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
-	int hinting = args[1]->Int32Value();
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
+	int hinting = NANX_int(info[1]);
 	TTF_SetFontHinting(font, hinting);
-	NanReturnValue(NanNew<Integer>(hinting));
+	info.GetReturnValue().Set(Nan::New(hinting));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_FontHeight)
+NANX_EXPORT(TTF_FontHeight)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
 	int height = TTF_FontHeight(font);
-	NanReturnValue(NanNew<Integer>(height));
+	info.GetReturnValue().Set(Nan::New(height));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_FontAscent)
+NANX_EXPORT(TTF_FontAscent)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
 	int ascent = TTF_FontAscent(font);
-	NanReturnValue(NanNew<Integer>(ascent));
+	info.GetReturnValue().Set(Nan::New(ascent));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_FontDescent)
+NANX_EXPORT(TTF_FontDescent)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
 	int descent = TTF_FontDescent(font);
-	NanReturnValue(NanNew<Integer>(descent));
+	info.GetReturnValue().Set(Nan::New(descent));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_FontLineSkip)
+NANX_EXPORT(TTF_FontLineSkip)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
 	int line_skip = TTF_FontLineSkip(font);
-	NanReturnValue(NanNew<Integer>(line_skip));
+	info.GetReturnValue().Set(Nan::New(line_skip));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_GetFontKerning)
+NANX_EXPORT(TTF_GetFontKerning)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
 	int kerning = TTF_GetFontKerning(font);
-	NanReturnValue(NanNew<Integer>(kerning));
+	info.GetReturnValue().Set(Nan::New(kerning));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_SetFontKerning)
+NANX_EXPORT(TTF_SetFontKerning)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
-	int kerning = args[1]->Int32Value();
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
+	int kerning = NANX_int(info[1]);
 	TTF_SetFontKerning(font, kerning);
-	NanReturnValue(NanNew<Integer>(kerning));
+	info.GetReturnValue().Set(Nan::New(kerning));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_FontFaces)
+NANX_EXPORT(TTF_FontFaces)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
 	long faces = TTF_FontFaces(font);
-	NanReturnValue(NanNew<Integer>((int32_t) faces)); // TODO: long
+	info.GetReturnValue().Set(Nan::New((int32_t) faces)); // TODO: long
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_FontFaceIsFixedWidth)
+NANX_EXPORT(TTF_FontFaceIsFixedWidth)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
 	int fixed_width = TTF_FontFaceIsFixedWidth(font);
-	NanReturnValue(NanNew<Integer>(fixed_width));
+	info.GetReturnValue().Set(Nan::New(fixed_width));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_FontFaceFamilyName)
+NANX_EXPORT(TTF_FontFaceFamilyName)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
 	char* name = TTF_FontFaceFamilyName(font);
-	NanReturnValue(NanNew<String>(name));
+	info.GetReturnValue().Set(NANX_STRING(name));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_FontFaceStyleName)
+NANX_EXPORT(TTF_FontFaceStyleName)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
 	char* name = TTF_FontFaceStyleName(font);
-	NanReturnValue(NanNew<String>(name));
+	info.GetReturnValue().Set(NANX_STRING(name));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_GlyphIsProvided)
+NANX_EXPORT(TTF_GlyphIsProvided)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
-	::Uint16 ch = (::Uint16) args[1]->Uint32Value();
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
+	::Uint16 ch = NANX_Uint16(info[1]);
 	int provided = TTF_GlyphIsProvided(font, ch);
-	NanReturnValue(NanNew<Integer>(provided));
+	info.GetReturnValue().Set(Nan::New(provided));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_GlyphMetrics)
+NANX_EXPORT(TTF_GlyphMetrics)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
-	::Uint16 ch = (::Uint16) args[1]->Uint32Value();
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
+	::Uint16 ch = NANX_Uint16(info[1]);
 	int minx = 0, maxx = 0;
 	int miny = 0, maxy = 0;
 	int advance = 0;
 	int err = TTF_GlyphMetrics(font, ch, &minx, &maxx, &miny, &maxy, &advance);
-	if (args[2]->IsObject())
+	if (info[2]->IsObject())
 	{
-		Local<Object> ret = Local<Object>::Cast(args[2]);
-		ret->Set(NanNew<String>("minx"), NanNew<Integer>(minx));
-		ret->Set(NanNew<String>("maxx"), NanNew<Integer>(maxx));
-		ret->Set(NanNew<String>("miny"), NanNew<Integer>(miny));
-		ret->Set(NanNew<String>("maxy"), NanNew<Integer>(maxy));
-		ret->Set(NanNew<String>("advance"), NanNew<Integer>(advance));
+		v8::Local<v8::Object> ret = v8::Local<v8::Object>::Cast(info[2]);
+		ret->Set(NANX_SYMBOL("minx"), Nan::New(minx));
+		ret->Set(NANX_SYMBOL("maxx"), Nan::New(maxx));
+		ret->Set(NANX_SYMBOL("miny"), Nan::New(miny));
+		ret->Set(NANX_SYMBOL("maxy"), Nan::New(maxy));
+		ret->Set(NANX_SYMBOL("advance"), Nan::New(advance));
 	}
-	NanReturnValue(NanNew<Integer>(err));
+	info.GetReturnValue().Set(Nan::New(err));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_SizeText)
+NANX_EXPORT(TTF_SizeText)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
-	Local<String> text = Local<String>::Cast(args[1]);
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
+	v8::Local<v8::String> text = v8::Local<v8::String>::Cast(info[1]);
 	int w = 0, h = 0;
-	int err = TTF_SizeText(font, *NanAsciiString(text), &w, &h);
-	if (args[2]->IsObject())
+	int err = TTF_SizeText(font, *v8::String::Utf8Value(text), &w, &h);
+	if (info[2]->IsObject())
 	{
-		Local<Object> ret = Local<Object>::Cast(args[2]);
-		ret->Set(NanNew<String>("w"), NanNew<Integer>(w));
-		ret->Set(NanNew<String>("h"), NanNew<Integer>(h));
+		v8::Local<v8::Object> ret = v8::Local<v8::Object>::Cast(info[2]);
+		ret->Set(NANX_SYMBOL("w"), Nan::New(w));
+		ret->Set(NANX_SYMBOL("h"), Nan::New(h));
 	}
-	NanReturnValue(NanNew<Integer>(err));
+	info.GetReturnValue().Set(Nan::New(err));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_SizeUTF8)
+NANX_EXPORT(TTF_SizeUTF8)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
-	Local<String> text = Local<String>::Cast(args[1]);
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
+	v8::Local<v8::String> text = v8::Local<v8::String>::Cast(info[1]);
 	int w = 0, h = 0;
-	int err = TTF_SizeUTF8(font, *String::Utf8Value(text), &w, &h);
-	if (args[2]->IsObject())
+	int err = TTF_SizeUTF8(font, *v8::String::Utf8Value(text), &w, &h);
+	if (info[2]->IsObject())
 	{
-		Local<Object> ret = Local<Object>::Cast(args[2]);
-		ret->Set(NanNew<String>("w"), NanNew<Integer>(w));
-		ret->Set(NanNew<String>("h"), NanNew<Integer>(h));
+		v8::Local<v8::Object> ret = v8::Local<v8::Object>::Cast(info[2]);
+		ret->Set(NANX_SYMBOL("w"), Nan::New(w));
+		ret->Set(NANX_SYMBOL("h"), Nan::New(h));
 	}
-	NanReturnValue(NanNew<Integer>(err));
+	info.GetReturnValue().Set(Nan::New(err));
 }
 
-MODULE_EXPORT_IMPLEMENT_TODO(TTF_SizeUNICODE)
+NANX_EXPORT(TTF_SizeUNICODE) { Nan::ThrowError("TODO"); }
 
-MODULE_EXPORT_IMPLEMENT(TTF_RenderText_Solid)
+NANX_EXPORT(TTF_RenderText_Solid)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
-	Local<String> text = Local<String>::Cast(args[1]);
-	SDL_Color fg = _get_color(args[2]);
-	SDL_Surface* surface = TTF_RenderText_Solid(font, *NanAsciiString(text), fg);
-	NanReturnValue(node_sdl2::WrapSurface::Hold(surface));
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
+	v8::Local<v8::String> text = v8::Local<v8::String>::Cast(info[1]);
+	SDL_Color fg = _get_color(info[2]);
+	SDL_Surface* surface = TTF_RenderText_Solid(font, *v8::String::Utf8Value(text), fg);
+	info.GetReturnValue().Set(node_sdl2::WrapSurface::Hold(surface));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_RenderUTF8_Solid)
+NANX_EXPORT(TTF_RenderUTF8_Solid)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
-	Local<String> text = Local<String>::Cast(args[1]);
-	SDL_Color fg = _get_color(args[2]);
-	SDL_Surface* surface = TTF_RenderText_Solid(font, *String::Utf8Value(text), fg);
-	NanReturnValue(node_sdl2::WrapSurface::Hold(surface));
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
+	v8::Local<v8::String> text = v8::Local<v8::String>::Cast(info[1]);
+	SDL_Color fg = _get_color(info[2]);
+	SDL_Surface* surface = TTF_RenderText_Solid(font, *v8::String::Utf8Value(text), fg);
+	info.GetReturnValue().Set(node_sdl2::WrapSurface::Hold(surface));
 }
 
-MODULE_EXPORT_IMPLEMENT_TODO(TTF_RenderUNICODE_Solid)
+NANX_EXPORT(TTF_RenderUNICODE_Solid) { Nan::ThrowError("TODO"); }
 
-MODULE_EXPORT_IMPLEMENT(TTF_RenderGlyph_Solid)
+NANX_EXPORT(TTF_RenderGlyph_Solid)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
-	::Uint16 ch = (::Uint16) args[1]->Uint32Value();
-	SDL_Color fg = _get_color(args[2]);
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
+	::Uint16 ch = NANX_Uint16(info[1]);
+	SDL_Color fg = _get_color(info[2]);
 	SDL_Surface* surface = TTF_RenderGlyph_Solid(font, ch, fg);
-	NanReturnValue(node_sdl2::WrapSurface::Hold(surface));
+	info.GetReturnValue().Set(node_sdl2::WrapSurface::Hold(surface));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_RenderText_Shaded)
+NANX_EXPORT(TTF_RenderText_Shaded)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
-	Local<String> text = Local<String>::Cast(args[1]);
-	SDL_Color fg = _get_color(args[2]);
-	SDL_Color bg = _get_color(args[3]);
-	SDL_Surface* surface = TTF_RenderText_Shaded(font, *NanAsciiString(text), fg, bg);
-	NanReturnValue(node_sdl2::WrapSurface::Hold(surface));
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
+	v8::Local<v8::String> text = v8::Local<v8::String>::Cast(info[1]);
+	SDL_Color fg = _get_color(info[2]);
+	SDL_Color bg = _get_color(info[3]);
+	SDL_Surface* surface = TTF_RenderText_Shaded(font, *v8::String::Utf8Value(text), fg, bg);
+	info.GetReturnValue().Set(node_sdl2::WrapSurface::Hold(surface));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_RenderUTF8_Shaded)
+NANX_EXPORT(TTF_RenderUTF8_Shaded)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
-	Local<String> text = Local<String>::Cast(args[1]);
-	SDL_Color fg = _get_color(args[2]);
-	SDL_Color bg = _get_color(args[3]);
-	SDL_Surface* surface = TTF_RenderUTF8_Shaded(font, *String::Utf8Value(text), fg, bg);
-	NanReturnValue(node_sdl2::WrapSurface::Hold(surface));
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
+	v8::Local<v8::String> text = v8::Local<v8::String>::Cast(info[1]);
+	SDL_Color fg = _get_color(info[2]);
+	SDL_Color bg = _get_color(info[3]);
+	SDL_Surface* surface = TTF_RenderUTF8_Shaded(font, *v8::String::Utf8Value(text), fg, bg);
+	info.GetReturnValue().Set(node_sdl2::WrapSurface::Hold(surface));
 }
 
-MODULE_EXPORT_IMPLEMENT_TODO(TTF_RenderUNICODE_Shaded)
+NANX_EXPORT(TTF_RenderUNICODE_Shaded) { Nan::ThrowError("TODO"); }
 
-MODULE_EXPORT_IMPLEMENT(TTF_RenderGlyph_Shaded)
+NANX_EXPORT(TTF_RenderGlyph_Shaded)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
-	::Uint16 ch = (::Uint16) args[1]->Uint32Value();
-	SDL_Color fg = _get_color(args[2]);
-	SDL_Color bg = _get_color(args[3]);
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
+	::Uint16 ch = NANX_Uint16(info[1]);
+	SDL_Color fg = _get_color(info[2]);
+	SDL_Color bg = _get_color(info[3]);
 	SDL_Surface* surface = TTF_RenderGlyph_Shaded(font, ch, fg, bg);
-	NanReturnValue(node_sdl2::WrapSurface::Hold(surface));
+	info.GetReturnValue().Set(node_sdl2::WrapSurface::Hold(surface));
 }
 
 // extern DECLSPEC SDL_Surface * SDLCALL TTF_RenderText_Blended(TTF_Font *font, const char *text, SDL_Color fg);
-MODULE_EXPORT_IMPLEMENT(TTF_RenderText_Blended)
+NANX_EXPORT(TTF_RenderText_Blended)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
-	Local<String> text = Local<String>::Cast(args[1]);
-	SDL_Color fg = _get_color(args[2]);
-	SDL_Surface* surface = TTF_RenderUTF8_Blended(font, *NanAsciiString(text), fg);
-	NanReturnValue(node_sdl2::WrapSurface::Hold(surface));
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
+	v8::Local<v8::String> text = v8::Local<v8::String>::Cast(info[1]);
+	SDL_Color fg = _get_color(info[2]);
+	SDL_Surface* surface = TTF_RenderUTF8_Blended(font, *v8::String::Utf8Value(text), fg);
+	info.GetReturnValue().Set(node_sdl2::WrapSurface::Hold(surface));
 }
 
 // extern DECLSPEC SDL_Surface * SDLCALL TTF_RenderUTF8_Blended(TTF_Font *font, const char *text, SDL_Color fg);
-MODULE_EXPORT_IMPLEMENT(TTF_RenderUTF8_Blended)
+NANX_EXPORT(TTF_RenderUTF8_Blended)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
-	Local<String> text = Local<String>::Cast(args[1]);
-	SDL_Color fg = _get_color(args[2]);
-	SDL_Surface* surface = TTF_RenderUTF8_Blended(font, *String::Utf8Value(text), fg);
-	NanReturnValue(node_sdl2::WrapSurface::Hold(surface));
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
+	v8::Local<v8::String> text = v8::Local<v8::String>::Cast(info[1]);
+	SDL_Color fg = _get_color(info[2]);
+	SDL_Surface* surface = TTF_RenderUTF8_Blended(font, *v8::String::Utf8Value(text), fg);
+	info.GetReturnValue().Set(node_sdl2::WrapSurface::Hold(surface));
 }
 
-MODULE_EXPORT_IMPLEMENT_TODO(TTF_RenderUNICODE_Blended)
+NANX_EXPORT(TTF_RenderUNICODE_Blended) { Nan::ThrowError("TODO"); }
 
-MODULE_EXPORT_IMPLEMENT(TTF_RenderGlyph_Blended)
+NANX_EXPORT(TTF_RenderGlyph_Blended)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
-	::Uint16 ch = (::Uint16) args[1]->Uint32Value();
-	SDL_Color fg = _get_color(args[2]);
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
+	::Uint16 ch = NANX_Uint16(info[1]);
+	SDL_Color fg = _get_color(info[2]);
 	SDL_Surface* surface = TTF_RenderGlyph_Blended(font, ch, fg);
-	NanReturnValue(node_sdl2::WrapSurface::Hold(surface));
+	info.GetReturnValue().Set(node_sdl2::WrapSurface::Hold(surface));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_RenderText_Blended_Wrapped)
+NANX_EXPORT(TTF_RenderText_Blended_Wrapped)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
-	Local<String> text = Local<String>::Cast(args[1]);
-	SDL_Color fg = _get_color(args[2]);
-	::Uint32 wrapLength = args[3]->Uint32Value();
-	SDL_Surface* surface = TTF_RenderUTF8_Blended_Wrapped(font, *NanAsciiString(text), fg, wrapLength);
-	NanReturnValue(node_sdl2::WrapSurface::Hold(surface));
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
+	v8::Local<v8::String> text = v8::Local<v8::String>::Cast(info[1]);
+	SDL_Color fg = _get_color(info[2]);
+	::Uint32 wrapLength = NANX_Uint32(info[3]);
+	SDL_Surface* surface = TTF_RenderUTF8_Blended_Wrapped(font, *v8::String::Utf8Value(text), fg, wrapLength);
+	info.GetReturnValue().Set(node_sdl2::WrapSurface::Hold(surface));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_RenderUTF8_Blended_Wrapped)
+NANX_EXPORT(TTF_RenderUTF8_Blended_Wrapped)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
-	Local<String> text = Local<String>::Cast(args[1]);
-	SDL_Color fg = _get_color(args[2]);
-	::Uint32 wrapLength = args[3]->Uint32Value();
-	SDL_Surface* surface = TTF_RenderUTF8_Blended_Wrapped(font, *String::Utf8Value(text), fg, wrapLength);
-	NanReturnValue(node_sdl2::WrapSurface::Hold(surface));
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
+	v8::Local<v8::String> text = v8::Local<v8::String>::Cast(info[1]);
+	SDL_Color fg = _get_color(info[2]);
+	::Uint32 wrapLength = NANX_Uint32(info[3]);
+	SDL_Surface* surface = TTF_RenderUTF8_Blended_Wrapped(font, *v8::String::Utf8Value(text), fg, wrapLength);
+	info.GetReturnValue().Set(node_sdl2::WrapSurface::Hold(surface));
 }
 
-MODULE_EXPORT_IMPLEMENT_TODO(TTF_RenderUNICODE_Blended_Wrapped)
+NANX_EXPORT(TTF_RenderUNICODE_Blended_Wrapped) { Nan::ThrowError("TODO"); }
 
-MODULE_EXPORT_IMPLEMENT(TTF_RenderText)
+NANX_EXPORT(TTF_RenderText)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
-	Local<String> text = Local<String>::Cast(args[1]);
-	SDL_Color fg = _get_color(args[2]);
-	SDL_Color bg = _get_color(args[3]);
-	SDL_Surface* surface = TTF_RenderText(font, *NanAsciiString(text), fg, bg);
-	NanReturnValue(node_sdl2::WrapSurface::Hold(surface));
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
+	v8::Local<v8::String> text = v8::Local<v8::String>::Cast(info[1]);
+	SDL_Color fg = _get_color(info[2]);
+	SDL_Color bg = _get_color(info[3]);
+	SDL_Surface* surface = TTF_RenderText(font, *v8::String::Utf8Value(text), fg, bg);
+	info.GetReturnValue().Set(node_sdl2::WrapSurface::Hold(surface));
 }
 
-MODULE_EXPORT_IMPLEMENT(TTF_RenderUTF8)
+NANX_EXPORT(TTF_RenderUTF8)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
-	Local<String> text = Local<String>::Cast(args[1]);
-	SDL_Color fg = _get_color(args[2]);
-	SDL_Color bg = _get_color(args[3]);
-	SDL_Surface* surface = TTF_RenderUTF8(font, *String::Utf8Value(text), fg, bg);
-	NanReturnValue(node_sdl2::WrapSurface::Hold(surface));
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
+	v8::Local<v8::String> text = v8::Local<v8::String>::Cast(info[1]);
+	SDL_Color fg = _get_color(info[2]);
+	SDL_Color bg = _get_color(info[3]);
+	SDL_Surface* surface = TTF_RenderUTF8(font, *v8::String::Utf8Value(text), fg, bg);
+	info.GetReturnValue().Set(node_sdl2::WrapSurface::Hold(surface));
 }
 
-MODULE_EXPORT_IMPLEMENT_TODO(TTF_RenderUNICODE)
+NANX_EXPORT(TTF_RenderUNICODE) { Nan::ThrowError("TODO"); }
 
-MODULE_EXPORT_IMPLEMENT(TTF_GetFontKerningSize)
+NANX_EXPORT(TTF_GetFontKerningSize)
 {
-	NanScope();
-	TTF_Font* font = WrapFont::Peek(args[0]); if (!font) { return NanThrowError(NanNew<String>("null object")); }
-	int prev_index = args[1]->Int32Value();
-	int index = args[2]->Int32Value();
+	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
+	int prev_index = NANX_int(info[1]);
+	int index = NANX_int(info[2]);
 	int size = TTF_GetFontKerningSize(font, prev_index, index);
-	NanReturnValue(NanNew<Integer>(size));
+	info.GetReturnValue().Set(Nan::New(size));
 }
 
-#if NODE_VERSION_AT_LEAST(0,11,0)
-void init(Handle<Object> exports, Handle<Value> module, Handle<Context> context)
-#else
-void init(Handle<Object> exports/*, Handle<Value> module*/)
-#endif
+NAN_MODULE_INIT(init)
 {
-	NanScope();
 
 	// SDL_ttf.h
 
-	MODULE_CONSTANT(exports, SDL_TTF_MAJOR_VERSION);
-	MODULE_CONSTANT(exports, SDL_TTF_MINOR_VERSION);
-	MODULE_CONSTANT(exports, SDL_TTF_PATCHLEVEL);
+	NANX_CONSTANT(target, SDL_TTF_MAJOR_VERSION);
+	NANX_CONSTANT(target, SDL_TTF_MINOR_VERSION);
+	NANX_CONSTANT(target, SDL_TTF_PATCHLEVEL);
 
-	MODULE_CONSTANT(exports, UNICODE_BOM_NATIVE);
-	MODULE_CONSTANT(exports, UNICODE_BOM_SWAPPED);
+	NANX_CONSTANT(target, UNICODE_BOM_NATIVE);
+	NANX_CONSTANT(target, UNICODE_BOM_SWAPPED);
 
-	MODULE_CONSTANT(exports, TTF_STYLE_NORMAL);
-	MODULE_CONSTANT(exports, TTF_STYLE_BOLD);
-	MODULE_CONSTANT(exports, TTF_STYLE_ITALIC);
-	MODULE_CONSTANT(exports, TTF_STYLE_UNDERLINE);
-	MODULE_CONSTANT(exports, TTF_STYLE_STRIKETHROUGH);
+	NANX_CONSTANT(target, TTF_STYLE_NORMAL);
+	NANX_CONSTANT(target, TTF_STYLE_BOLD);
+	NANX_CONSTANT(target, TTF_STYLE_ITALIC);
+	NANX_CONSTANT(target, TTF_STYLE_UNDERLINE);
+	NANX_CONSTANT(target, TTF_STYLE_STRIKETHROUGH);
 
-	MODULE_CONSTANT(exports, TTF_HINTING_NORMAL);
-	MODULE_CONSTANT(exports, TTF_HINTING_LIGHT);
-	MODULE_CONSTANT(exports, TTF_HINTING_MONO);
-	MODULE_CONSTANT(exports, TTF_HINTING_NONE);
+	NANX_CONSTANT(target, TTF_HINTING_NORMAL);
+	NANX_CONSTANT(target, TTF_HINTING_LIGHT);
+	NANX_CONSTANT(target, TTF_HINTING_MONO);
+	NANX_CONSTANT(target, TTF_HINTING_NONE);
 
-	MODULE_EXPORT_APPLY(exports, TTF_LinkedVersion);
-	MODULE_EXPORT_APPLY(exports, TTF_ByteSwappedUNICODE);
-	MODULE_EXPORT_APPLY(exports, TTF_Init);
-	MODULE_EXPORT_APPLY(exports, TTF_Quit);
-	MODULE_EXPORT_APPLY(exports, TTF_WasInit);
-	MODULE_EXPORT_APPLY(exports, TTF_GetError);
-	MODULE_EXPORT_APPLY(exports, TTF_ClearError);
-	MODULE_EXPORT_APPLY(exports, TTF_OpenFont);
-	MODULE_EXPORT_APPLY(exports, TTF_OpenFontIndex);
-	MODULE_EXPORT_APPLY(exports, TTF_OpenFontRW);
-	MODULE_EXPORT_APPLY(exports, TTF_OpenFontIndexRW);
-	MODULE_EXPORT_APPLY(exports, TTF_CloseFont);
-	MODULE_EXPORT_APPLY(exports, TTF_GetFontStyle);
-	MODULE_EXPORT_APPLY(exports, TTF_SetFontStyle);
-	MODULE_EXPORT_APPLY(exports, TTF_GetFontOutline);
-	MODULE_EXPORT_APPLY(exports, TTF_SetFontOutline);
-	MODULE_EXPORT_APPLY(exports, TTF_GetFontHinting);
-	MODULE_EXPORT_APPLY(exports, TTF_SetFontHinting);
-	MODULE_EXPORT_APPLY(exports, TTF_FontHeight);
-	MODULE_EXPORT_APPLY(exports, TTF_FontAscent);
-	MODULE_EXPORT_APPLY(exports, TTF_FontDescent);
-	MODULE_EXPORT_APPLY(exports, TTF_FontLineSkip);
-	MODULE_EXPORT_APPLY(exports, TTF_GetFontKerning);
-	MODULE_EXPORT_APPLY(exports, TTF_SetFontKerning);
-	MODULE_EXPORT_APPLY(exports, TTF_FontFaces);
-	MODULE_EXPORT_APPLY(exports, TTF_FontFaceIsFixedWidth);
-	MODULE_EXPORT_APPLY(exports, TTF_FontFaceFamilyName);
-	MODULE_EXPORT_APPLY(exports, TTF_FontFaceStyleName);
-	MODULE_EXPORT_APPLY(exports, TTF_GlyphIsProvided);
-	MODULE_EXPORT_APPLY(exports, TTF_GlyphMetrics);
-	MODULE_EXPORT_APPLY(exports, TTF_SizeText);
-	MODULE_EXPORT_APPLY(exports, TTF_SizeUTF8);
-	MODULE_EXPORT_APPLY(exports, TTF_SizeUNICODE);
-	MODULE_EXPORT_APPLY(exports, TTF_RenderText_Solid);
-	MODULE_EXPORT_APPLY(exports, TTF_RenderUTF8_Solid);
-	MODULE_EXPORT_APPLY(exports, TTF_RenderUNICODE_Solid);
-	MODULE_EXPORT_APPLY(exports, TTF_RenderGlyph_Solid);
-	MODULE_EXPORT_APPLY(exports, TTF_RenderText_Shaded);
-	MODULE_EXPORT_APPLY(exports, TTF_RenderUTF8_Shaded);
-	MODULE_EXPORT_APPLY(exports, TTF_RenderUNICODE_Shaded);
-	MODULE_EXPORT_APPLY(exports, TTF_RenderGlyph_Shaded);
-	MODULE_EXPORT_APPLY(exports, TTF_RenderText_Blended);
-	MODULE_EXPORT_APPLY(exports, TTF_RenderUTF8_Blended);
-	MODULE_EXPORT_APPLY(exports, TTF_RenderUNICODE_Blended);
-	MODULE_EXPORT_APPLY(exports, TTF_RenderGlyph_Blended);
-	MODULE_EXPORT_APPLY(exports, TTF_RenderText_Blended_Wrapped);
-	MODULE_EXPORT_APPLY(exports, TTF_RenderUTF8_Blended_Wrapped);
-	MODULE_EXPORT_APPLY(exports, TTF_RenderUNICODE_Blended_Wrapped);
-	MODULE_EXPORT_APPLY(exports, TTF_RenderText);
-	MODULE_EXPORT_APPLY(exports, TTF_RenderUTF8);
-	MODULE_EXPORT_APPLY(exports, TTF_RenderUNICODE);
-	MODULE_EXPORT_APPLY(exports, TTF_GetFontKerningSize);
+	NANX_EXPORT_APPLY(target, TTF_LinkedVersion);
+	NANX_EXPORT_APPLY(target, TTF_ByteSwappedUNICODE);
+	NANX_EXPORT_APPLY(target, TTF_Init);
+	NANX_EXPORT_APPLY(target, TTF_Quit);
+	NANX_EXPORT_APPLY(target, TTF_WasInit);
+	NANX_EXPORT_APPLY(target, TTF_GetError);
+	NANX_EXPORT_APPLY(target, TTF_ClearError);
+	NANX_EXPORT_APPLY(target, TTF_OpenFont);
+	NANX_EXPORT_APPLY(target, TTF_OpenFontIndex);
+	NANX_EXPORT_APPLY(target, TTF_OpenFontRW);
+	NANX_EXPORT_APPLY(target, TTF_OpenFontIndexRW);
+	NANX_EXPORT_APPLY(target, TTF_CloseFont);
+	NANX_EXPORT_APPLY(target, TTF_GetFontStyle);
+	NANX_EXPORT_APPLY(target, TTF_SetFontStyle);
+	NANX_EXPORT_APPLY(target, TTF_GetFontOutline);
+	NANX_EXPORT_APPLY(target, TTF_SetFontOutline);
+	NANX_EXPORT_APPLY(target, TTF_GetFontHinting);
+	NANX_EXPORT_APPLY(target, TTF_SetFontHinting);
+	NANX_EXPORT_APPLY(target, TTF_FontHeight);
+	NANX_EXPORT_APPLY(target, TTF_FontAscent);
+	NANX_EXPORT_APPLY(target, TTF_FontDescent);
+	NANX_EXPORT_APPLY(target, TTF_FontLineSkip);
+	NANX_EXPORT_APPLY(target, TTF_GetFontKerning);
+	NANX_EXPORT_APPLY(target, TTF_SetFontKerning);
+	NANX_EXPORT_APPLY(target, TTF_FontFaces);
+	NANX_EXPORT_APPLY(target, TTF_FontFaceIsFixedWidth);
+	NANX_EXPORT_APPLY(target, TTF_FontFaceFamilyName);
+	NANX_EXPORT_APPLY(target, TTF_FontFaceStyleName);
+	NANX_EXPORT_APPLY(target, TTF_GlyphIsProvided);
+	NANX_EXPORT_APPLY(target, TTF_GlyphMetrics);
+	NANX_EXPORT_APPLY(target, TTF_SizeText);
+	NANX_EXPORT_APPLY(target, TTF_SizeUTF8);
+	NANX_EXPORT_APPLY(target, TTF_SizeUNICODE);
+	NANX_EXPORT_APPLY(target, TTF_RenderText_Solid);
+	NANX_EXPORT_APPLY(target, TTF_RenderUTF8_Solid);
+	NANX_EXPORT_APPLY(target, TTF_RenderUNICODE_Solid);
+	NANX_EXPORT_APPLY(target, TTF_RenderGlyph_Solid);
+	NANX_EXPORT_APPLY(target, TTF_RenderText_Shaded);
+	NANX_EXPORT_APPLY(target, TTF_RenderUTF8_Shaded);
+	NANX_EXPORT_APPLY(target, TTF_RenderUNICODE_Shaded);
+	NANX_EXPORT_APPLY(target, TTF_RenderGlyph_Shaded);
+	NANX_EXPORT_APPLY(target, TTF_RenderText_Blended);
+	NANX_EXPORT_APPLY(target, TTF_RenderUTF8_Blended);
+	NANX_EXPORT_APPLY(target, TTF_RenderUNICODE_Blended);
+	NANX_EXPORT_APPLY(target, TTF_RenderGlyph_Blended);
+	NANX_EXPORT_APPLY(target, TTF_RenderText_Blended_Wrapped);
+	NANX_EXPORT_APPLY(target, TTF_RenderUTF8_Blended_Wrapped);
+	NANX_EXPORT_APPLY(target, TTF_RenderUNICODE_Blended_Wrapped);
+	NANX_EXPORT_APPLY(target, TTF_RenderText);
+	NANX_EXPORT_APPLY(target, TTF_RenderUTF8);
+	NANX_EXPORT_APPLY(target, TTF_RenderUNICODE);
+	NANX_EXPORT_APPLY(target, TTF_GetFontKerningSize);
 }
 
 } // namespace node_sdl2_ttf
 
-#if NODE_VERSION_AT_LEAST(0,11,0)
-NODE_MODULE_CONTEXT_AWARE_BUILTIN(node_sdl2_ttf, node_sdl2_ttf::init)
-#else
 NODE_MODULE(node_sdl2_ttf, node_sdl2_ttf::init)
-#endif
-
