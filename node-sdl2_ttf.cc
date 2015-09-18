@@ -67,11 +67,11 @@ static SDL_Color _get_color(v8::Local<v8::Value> value)
 	else if (value->IsObject())
 	{
 		v8::Local<v8::Object> obj = v8::Local<v8::Object>::Cast(value);
-		node_sdl2::WrapColor* n_color = node_sdl2::WrapColor::Unwrap(obj);
-		if (n_color)
+		node_sdl2::WrapColor* wrap_color = node_sdl2::WrapColor::Unwrap(obj);
+		if (wrap_color)
 		{
 			// new sdl.SDL_Color(0xRR, 0xGG, 0xBB, 0xAA);
-			color = n_color->GetColor();
+			color = wrap_color->GetColor();
 		}
 		else
 		{
@@ -523,7 +523,6 @@ NANX_EXPORT(TTF_GetFontKerningSize)
 
 NAN_MODULE_INIT(init)
 {
-
 	// SDL_ttf.h
 
 	NANX_CONSTANT(target, SDL_TTF_MAJOR_VERSION);
