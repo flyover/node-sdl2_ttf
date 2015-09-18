@@ -67,7 +67,6 @@ public:
 		v8::Local<v8::Object> instance = object_template->NewInstance();
 		WrapFont* wrap = new WrapFont(font);
 		wrap->Wrap(instance);
-		wrap->MakeWeak(); // TODO: is this necessary?
 		return scope.Escape(instance);
 	}
 private:
