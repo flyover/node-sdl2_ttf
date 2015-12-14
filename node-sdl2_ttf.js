@@ -24,11 +24,38 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE. 
  */
 
-var sdl2_ttf = null;
-try { sdl2_ttf = sdl2_ttf || require('./build/Release/node-sdl2_ttf.node'); } catch (err) {}
-try { sdl2_ttf = sdl2_ttf || process._linkedBinding('node_sdl2_ttf'); } catch (err) {}
-try { sdl2_ttf = sdl2_ttf || process.binding('node_sdl2_ttf'); } catch (err) {}
-module.exports = sdl2_ttf;
+var node_sdl2_ttf = null;
+try { node_sdl2_ttf = node_sdl2_ttf || require('./build/Release/node-sdl2_ttf.node'); } catch (err) {}
+try { node_sdl2_ttf = node_sdl2_ttf || process._linkedBinding('node_sdl2_ttf'); } catch (err) {}
+try { node_sdl2_ttf = node_sdl2_ttf || process.binding('node_sdl2_ttf'); } catch (err) {}
+module.exports = node_sdl2_ttf;
 
-sdl2_ttf.version = sdl2_ttf.version || sdl2_ttf.SDL_TTF_MAJOR_VERSION + "." + sdl2_ttf.SDL_TTF_MINOR_VERSION + "." + sdl2_ttf.SDL_TTF_PATCHLEVEL;
+node_sdl2_ttf.version = node_sdl2_ttf.version || node_sdl2_ttf.SDL_TTF_MAJOR_VERSION + "." + node_sdl2_ttf.SDL_TTF_MINOR_VERSION + "." + node_sdl2_ttf.SDL_TTF_PATCHLEVEL;
 
+node_sdl2_ttf.TTF_CheckError = node_sdl2_ttf.TTF_CheckError || function ()
+{
+	var error = node_sdl2_ttf.TTF_GetError(); node_sdl2_ttf.TTF_ClearError();
+	if (error) { console.error("SDL_ttf", error); }
+	return error;
+};
+
+/// var node_sdl2_ttf = require('@flyover/node-sdl2_ttf');
+/// var sdl_ttf = node_sdl2_ttf.TTF();
+/// node_sdl2_ttf.TTF_* -> sdl_ttf.*
+node_sdl2_ttf.TTF = function (out) {
+	out = out || {};
+	var re = /^(TTF_)(.*)/;
+	for (var key in node_sdl2_ttf) {
+		var match = key.match(re);
+		if (match && match[2]) {
+			//console.log(key, match[2]);
+			out[match[2]] = node_sdl2_ttf[key];
+		} else {
+			//console.log("!!!", key);
+			out[key] = node_sdl2_ttf[key];
+		}
+	}
+	return out;
+}
+
+//node_sdl2_ttf.Mix();
