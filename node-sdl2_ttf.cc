@@ -465,7 +465,14 @@ NANX_EXPORT(TTF_RenderGlyph_Blended)
 	::Uint16 ch = NANX_Uint16(info[1]);
 	SDL_Color fg = _get_color(info[2]);
 	SDL_Surface* surface = TTF_RenderGlyph_Blended(font, ch, fg);
-	info.GetReturnValue().Set(node_sdl2::WrapSurface::Hold(surface));
+	if (surface == NULL)
+	{
+		info.GetReturnValue().SetNull();
+	}
+	else
+	{
+		info.GetReturnValue().Set(node_sdl2::WrapSurface::Hold(surface));
+	}
 }
 
 NANX_EXPORT(TTF_RenderText_Blended_Wrapped)
