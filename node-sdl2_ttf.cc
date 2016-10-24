@@ -40,6 +40,16 @@
 
 #define countof(_a) (sizeof(_a)/sizeof((_a)[0]))
 
+#ifndef SDL_TTF_COMPILEDVERSION
+#define SDL_TTF_COMPILEDVERSION \
+	SDL_VERSIONNUM(SDL_TTF_MAJOR_VERSION, SDL_TTF_MINOR_VERSION, SDL_TTF_PATCHLEVEL)
+#endif
+
+#ifndef SDL_TTF_VERSION_ATLEAST
+#define SDL_TTF_VERSION_ATLEAST(X, Y, Z) \
+	(SDL_TTF_COMPILEDVERSION >= SDL_VERSIONNUM(X, Y, Z))
+#endif
+
 namespace node_sdl2_ttf {
 
 static SDL_Color _get_color(v8::Local<v8::Value> value)
@@ -528,7 +538,7 @@ NANX_EXPORT(TTF_GetFontKerningSize)
 	info.GetReturnValue().Set(Nan::New(size));
 }
 
-#if SDL_TTF_VERSION_AT_LEAST(2, 0, 14)
+#if SDL_TTF_VERSION_ATLEAST(2, 0, 14)
 NANX_EXPORT(TTF_GetFontKerningSizeGlyphs)
 {
 	TTF_Font* font = WrapFont::Peek(info[0]); if (!font) { return Nan::ThrowError("null object"); }
@@ -613,7 +623,7 @@ NAN_MODULE_INIT(init)
 	NANX_EXPORT_APPLY(target, TTF_RenderUTF8);
 	NANX_EXPORT_APPLY(target, TTF_RenderUNICODE);
 	NANX_EXPORT_APPLY(target, TTF_GetFontKerningSize);
-	#if SDL_TTF_VERSION_AT_LEAST(2, 0, 14)
+	#if SDL_TTF_VERSION_ATLEAST(2, 0, 14)
 	NANX_EXPORT_APPLY(target, TTF_GetFontKerningSizeGlyphs);
 	#endif
 }
